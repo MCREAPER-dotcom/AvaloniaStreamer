@@ -4,6 +4,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Threading;
+using NAudio.Wave;
 using SkiaSharp;
 using System;
 using System.Collections.Concurrent;
@@ -11,6 +12,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,29 +22,44 @@ namespace AvaloniaStreamer
     {
         private WriteableBitmap _bitmap;
         private ConcurrentQueue<WriteableBitmap> _frameQueue = new ConcurrentQueue<WriteableBitmap>();
-        private SKImage _latestFrame;
+        private WasapiLoopbackCapture _capture;
+        private WaveFileWriter _writer;
+        private WaveOutEvent _waveOut;
         public MainWindow()
         {
             InitializeComponent(); 
-            Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                if (LogBox != null)
-                {
-                    LogBox.Text = "Тестовое сообщение\n";
-                }
-            });
             StartCaptureLoop();
+            // Запуск захвата звука
+            Task.Run(StartAudioCapture);
         }
 
-        private void Log(string message)
+        private void StartAudioCapture()
         {
-            Dispatcher.UIThread.InvokeAsync(() =>
+            try
             {
-                if (LogBox != null)
+                _capture = new WasapiLoopbackCapture();
+                _writer = new WaveFileWriter("output.wav", _capture.WaveFormat);
+
+                _capture.DataAvailable += (s, e) =>
                 {
-                    LogBox.Text = $"{DateTime.Now:HH:mm:ss} - {message}\n";
-                }
-            }, DispatcherPriority.Background);
+                    _writer.Write(e.Buffer, 0, e.BytesRecorded);
+
+                    // Можно добавить обработку данных (например, передачу по сети)
+                };
+
+                _capture.RecordingStopped += (s, e) =>
+                {
+                    _writer.Dispose();
+                    Logger.Log(LogBox, "Аудиозапись остановлена");
+                };
+
+                _capture.StartRecording();
+                Logger.Log(LogBox, "Захват аудио начался");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LogBox, $"Ошибка захвата аудио: {ex.Message}");
+            }
         }
         private void StartCaptureLoop()
         {
@@ -63,7 +80,7 @@ namespace AvaloniaStreamer
                     }
                     catch (Exception ex)
                     {
-                        Log($"Ошибка захвата экрана: {ex.Message}");
+                        Logger.Log(LogBox,$"Ошибка захвата экрана: {ex.Message}");
                     }
                 }
             });
@@ -82,7 +99,7 @@ namespace AvaloniaStreamer
                     }
                     catch (Exception ex)
                     {
-                        Log($"Ошибка обновления UI: {ex.Message}");
+                        Logger.Log(LogBox, $"Ошибка обновления UI: {ex.Message}");
                     }
 
                     await Task.Delay(33); // ~30 FPS
@@ -95,7 +112,7 @@ namespace AvaloniaStreamer
             int width = rect.Right - rect.Left;
             int height = rect.Bottom - rect.Top;
 
-            Log($"Захватываем экран: {width}x{height}");
+            Logger.Log(LogBox, $"Захватываем экран: {width}x{height}");
 
             // Создаём буфер для хранения пикселей
             int bytesPerPixel = 4;
@@ -151,7 +168,7 @@ namespace AvaloniaStreamer
         {
             if (writeableBitmap == null)
             {
-                Log("WriteableBitmap пустой");
+                Logger.Log(LogBox, "WriteableBitmap пустой");
                 return;
             }
 
@@ -163,81 +180,10 @@ namespace AvaloniaStreamer
                 }
                 else
                 {
-                    Log("ImageView не найден в XAML!");
+                    Logger.Log(LogBox, "ImageView не найден в XAML!");
                 }
             }, DispatcherPriority.Background);
         }
     }
 
-    internal static class Win32
-    {
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetDesktopWindow();
-
-        [DllImport("user32.dll")]
-        public static extern bool GetWindowRect(IntPtr hwnd, out RECT rect);
-
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateDC(string lpszDriver, string lpszDevice, string lpszOutput, IntPtr lpInitData);
-
-        [DllImport("gdi32.dll")]
-        public static extern bool BitBlt(IntPtr hdcDest, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hdcSrc, int nXSrc, int nYSrc, uint dwRop);
-
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
-
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
-
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
-
-        [DllImport("gdi32.dll")]
-        public static extern bool DeleteObject(IntPtr hObject);
-
-        [DllImport("gdi32.dll")]
-        public static extern bool DeleteDC(IntPtr hdc);
-
-        [DllImport("gdi32.dll")]
-        public static extern int GetDIBits(IntPtr hdc, IntPtr hbmp, uint uStartScan, uint cScanLines, IntPtr lpBits, ref BITMAPINFO bmi, uint uUsage);
-
-        public const uint SRCCOPY = 0x00CC0020;
-        public const uint BI_RGB = 0;
-        public const uint DIB_RGB_COLORS = 0;
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-
-            public int Width => Right - Left;
-            public int Height => Bottom - Top;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct BITMAPINFOHEADER
-        {
-            public int biSize;
-            public int biWidth;
-            public int biHeight;
-            public short biPlanes;
-            public short biBitCount;
-            public int biCompression;
-            public int biSizeImage;
-            public int biXPelsPerMeter;
-            public int biYPelsPerMeter;
-            public int biClrUsed;
-            public int biClrImportant;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct BITMAPINFO
-        {
-            public BITMAPINFOHEADER bmiHeader;
-            public int bmiColors;
-        }
-    }
 }
