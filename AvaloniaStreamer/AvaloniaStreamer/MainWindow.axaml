@@ -2,22 +2,62 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:vm="clr-namespace:AvaloniaStreamer.ViewModels"
+        mc:Ignorable="d"
+        d:DesignWidth="800"
+        d:DesignHeight="600"
         x:Class="AvaloniaStreamer.MainWindow"
-        Title="AvaloniaStreamer"
-        Width="800"
-        Height="600">
-	<Grid RowDefinitions="*,Auto">
-		<!-- Видео -->
-		<Image x:Name="ImageView" 
-                 Grid.Row="0"
-			   Stretch="UniformToFill"/>
-		<!-- Лог -->
-		<TextBox x:Name="LogBox"
-                 Grid.Row="1"
-                 IsReadOnly="True"
-                 Background="Black"
-                 Foreground="White"
-                 TextWrapping="Wrap"/>
-	</Grid>
+        x:DataType="vm:MainWindowViewModel"
+        Title="ГойдаСтрим">
+	<Design.DataContext>
+		<vm:MainWindowViewModel/>
+	</Design.DataContext>
+	<StackPanel Margin="20" Spacing="10">
+		<Button Content="Capture Screen" Command="{Binding CaptureCommand}"/>
+		<Button Content="Start Continuous Capture" Command="{Binding StartContinuousCommand}"/>
+		<Button Content="Stop Continuous Capture" Command="{Binding StopContinuousCommand}"/>
+
+		<!-- Контейнер для изображения с фиксированными размерами -->
+		<Border BorderBrush="Gray" BorderThickness="1" Width="600" Height="400">
+			<Image Source="{Binding CapturedImage}" Stretch="Uniform"/>
+		</Border>
+
+		<TextBlock Text="{Binding Status}" HorizontalAlignment="Center"/>
+		<Separator/>
+		<TextBlock Text="Audio Capture" FontWeight="Bold"/>
+
+		<Separator/>
+		<TextBlock Text="Audio Capture Settings" FontWeight="Bold"/>
+
+		<CheckBox IsChecked="{Binding CaptureSystemAudio}"
+				  Content="Capture System Audio"/>
+
+		<CheckBox IsChecked="{Binding CaptureMicrophone}"
+				  Content="Capture Microphone"/>
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<Button Content="Start Audio" Command="{Binding StartAudioCaptureCommand}"/>
+			<Button Content="Stop Audio" Command="{Binding StopAudioCaptureCommand}"/>
+		</StackPanel>
+		<Separator/>
+		<TextBlock Text="Audio Playback" FontWeight="Bold"/>
+
+		<StackPanel Orientation="Horizontal" Spacing="10">
+			<Button Content="▶ System"
+					Command="{Binding PlaySystemAudioCommand}"
+					ToolTip.Tip="Play last captured system audio"/>
+
+			<Button Content="▶ Microphone"
+					Command="{Binding PlayMicrophoneAudioCommand}"
+					ToolTip.Tip="Play last captured microphone audio"/>
+
+			<Button Content="⏹ Stop"
+					Command="{Binding StopAudioPlaybackCommand}"
+					ToolTip.Tip="Stop playback"/>
+		</StackPanel>
+
+		<Slider Minimum="0" Maximum="1"
+        Value="{Binding Volume}"
+        Width="200"
+        ToolTip.Tip="Volume control"/>
+	</StackPanel>
 </Window>
