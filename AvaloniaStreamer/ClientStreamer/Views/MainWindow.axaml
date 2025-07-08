@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:ClientStreamer.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        x:Class="ClientStreamer.Views.MainWindow"
+        x:DataType="vm:ClientViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="GoidaStreamClient"
+		x:Name="RootWindow">
+
+
+	<Design.DataContext>
+		<vm:ClientViewModel/>
+	</Design.DataContext>
+	<Grid RowDefinitions="Auto,*,Auto" ColumnDefinitions="*,*">
+		<!-- Заголовок -->
+		<TextBlock Text="Stream Client" Grid.ColumnSpan="2"
+                   HorizontalAlignment="Center" FontSize="16"/>
+
+		<!-- Области отображения -->
+		<Border Grid.Row="1" Grid.Column="0" BorderBrush="Gray" Margin="5">
+			<Image x:Name="LocalDisplay" Source="{Binding LocalImage}"/>
+		</Border>
+
+		<Border Grid.Row="1" Grid.Column="1" BorderBrush="Gray" Margin="5">
+			<Image x:Name="RemoteDisplay" Source="{Binding RemoteImage}"/>
+		</Border>
+
+		<!-- Панель управления -->
+		<StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Spacing="10">
+			<Button Content="Start Broadcast"
+                    Command="{Binding StartBroadcastCommand}"
+					IsEnabled="{Binding StartBroadcastCommand.CanExecute}"/>
+			<Button Content="Stop Broadcast"
+                    Command="{Binding StopBroadcastCommand}"
+					IsEnabled="{Binding StopBroadcastCommand.CanExecute}"/>
+		</StackPanel>
+
+		<StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Spacing="10">
+			<Button Content="Connect to Stream"
+                    Command="{Binding ConnectCommand}"
+					IsEnabled="{Binding ConnectCommand.CanExecute}"/>
+			<Button Content="Disconnect"
+                    Command="{Binding DisconnectCommand}"
+					IsEnabled="{Binding DisconnectCommand.CanExecute}"/>
+		</StackPanel>
+	</Grid>
+</Window>
